@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SVG Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="node_modules/normalize.css/normalize.css">
+    <link rel="stylesheet" href="node_modules/leaflet/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" data-url="partners.json" data-svg-url="map.svg" data-png-url="map.png">
+    <div id="map" class="map"></div>
+    <div id="info-panel" class="info-panel">...</div>
+</div>
+<script src="node_modules/axios/dist/axios.min.js"></script>
+<script src="node_modules/leaflet/dist/leaflet-src.js"></script>
+<script src="node_modules/url-search-params/build/url-search-params.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
