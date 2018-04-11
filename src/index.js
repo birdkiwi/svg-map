@@ -20,16 +20,38 @@ const appBlock = document.getElementById('app'),
     mapBlockData = JSON.parse(appBlock.dataset.svgs),
     infoPanel = document.getElementById('info-panel'),
     mapSwitcherBlock = document.getElementById('map-switcher'),
-    dataUrl = appBlock.dataset.url;
+    dataApiUrl = appBlock.dataset.apiUrl;
 
 let maps = [],
-    objects = {};
+    objects = [];
 
-function fetchObjects() {
+function apiLogin() {
+    return axios.post(dataApiUrl + '/login/anonymous', {
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+    });
+}
+
+function fetchObjects(token) {
     return new Promise(function(resolve, reject) {
-        axios.get(dataUrl)
+        axios.get(dataApiUrl + '/objects/Exhibitors', {
+            headers: {
+                "X-Appercode-Session-Token": token,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        })
             .then(function (res) {
-                objects = res.data.partners;
+                objects = res.data;
+                console.log(objects);
+                console.log(objects.filter(object => {
+                    if (object.svgId) {
+                        console.log(object.svgId)
+                    }
+                    return object.svgId;
+                }).length);
                 resolve(res);
             })
             .catch(function (e) {
@@ -128,8 +150,9 @@ function switchMap(i) {
 
 function parseSVG() {
     maps.forEach((map, mapIndex) => {
-        for (const id in objects) {
-            const objectElement = map.svg.getElementById(id);
+        objects.forEach(object => {
+            const objectElement = map.svg.querySelector('[id^="' + object.svgId + '"]');
+
             if (objectElement) {
                 switch (objectElement.nodeName) {
                     case 'rect':
@@ -141,7 +164,7 @@ function parseSVG() {
                             d1[0] - parseInt(objectElement.attributes.height.value),
                             d1[1] + parseInt(objectElement.attributes.width.value)
                         ];
-                        addMapRectangle([d1, d2], objects[id], map.map, mapIndex);
+                        addMapRectangle([d1, d2], object, map.map, mapIndex);
                         break;
                     case 'polygon':
                         let points = objectElement.attributes.points.value.split(' ');
@@ -158,12 +181,12 @@ function parseSVG() {
                             points[i][0] = map.svgMapHeight -  points[i][0];
                         });
 
-                        addMapPolygon(points, objects[id], map.map, mapIndex);
+                        addMapPolygon(points, object, map.map, mapIndex);
 
                         break;
                 }
             }
-        }
+        });
     });
 }
 
@@ -195,7 +218,7 @@ function mapObjectClick(obj, data, map, mapIndex) {
 
     map.flyToBounds(obj.getBounds());
 
-    infoPanel.innerHTML = 'partner_name: ' + data.partner_name + ' | partner_code: <a href="#' + data.partner_code + '">' + data.partner_code + '</a>';
+    infoPanel.innerHTML = data.title + ' — <a href="#' + data.id + '">Подробнее</a>';
     infoPanel.classList.add('active');
 
     maps[mapIndex].mapMarkers.push(marker);
@@ -222,7 +245,12 @@ function messageFromNative(id) {
 }
 
 function init() {
-    fetchObjects()
+    apiLogin()
+        .then(res => {
+            if (res.data && res.data.sessionId) {
+                return fetchObjects(res.data.sessionId);
+            }
+        })
         .then(() => {
             return fetchSVGs();
         })
