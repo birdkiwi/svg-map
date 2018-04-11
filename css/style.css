@@ -1,0 +1,102 @@
+@import "~normalize.css/normalize.css";
+@import '~leaflet/dist/leaflet.css';
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#app,
+#maps {
+    height: 100%;
+    width: 100vw;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.map {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 200ms;
+}
+
+.map.active {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 200ms;
+}
+
+.map-switcher {
+    position: absolute;
+    z-index: 1000;
+    top: 10px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-radius: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    visibility: hidden;
+    opacity: 0;
+}
+
+.map-switcher.active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.map-switcher-item {
+    display: inline-block;
+    text-decoration: none;
+    color: #666;
+    background-color: #fff;
+    padding: 10px 15px;
+    border-left: 1px solid #d1d1d1;
+}
+
+.map-switcher-item:first-child {
+    border-radius: 2px 0 0 2px;
+    border-left: none;
+}
+
+.map-switcher-item:last-child {
+    border-radius: 0 2px 2px 0;
+}
+
+.map-switcher-item.active {
+    background-color: #e0e0e0;
+}
+
+.info-panel {
+    position: fixed;
+    z-index: 1000;
+    bottom: -40px;
+    left: 10px;
+    width: calc(100% - 20px);
+    min-height: 40px;
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 16px;
+    padding: 10px 15px;
+    opacity: 0;
+    border-radius: 4px;
+
+    transition: all 200ms;
+}
+
+.info-panel.active {
+    opacity: 1;
+    bottom: 10px;
+    transition: all 200ms;
+}
+
+.info-panel a {
+    color: #fff;
+}
