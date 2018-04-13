@@ -1,4 +1,5 @@
 import axios from 'axios';
+import {Spinner} from 'spin.js';
 import L from 'leaflet';
 import URLSearchParams from 'url-search-params';
 
@@ -20,10 +21,23 @@ const appBlock = document.getElementById('app'),
     mapBlockData = JSON.parse(appBlock.dataset.svgs),
     infoPanel = document.getElementById('info-panel'),
     mapSwitcherBlock = document.getElementById('map-switcher'),
-    dataApiUrl = appBlock.dataset.apiUrl;
+    dataApiUrl = appBlock.dataset.apiUrl,
+    spinner = new Spinner().spin(),
+    spinnerOverlay = document.getElementById('spinner-overlay');
 
 let maps = [],
-    objects = [];
+    objects = [],
+    areas = [];
+
+function startSpin() {
+    spinnerOverlay.innerHTML = '';
+    spinnerOverlay.appendChild(spinner.el);
+    spinnerOverlay.classList.add('active');
+}
+
+function stopSpin() {
+    spinnerOverlay.classList.remove('active');
+}
 
 function apiLogin() {
     return axios.post(dataApiUrl + '/login/anonymous', {
@@ -45,13 +59,27 @@ function fetchObjects(token) {
         })
             .then(function (res) {
                 objects = res.data;
-                console.log(objects);
-                console.log(objects.filter(object => {
-                    if (object.svgId) {
-                        console.log(object.svgId)
-                    }
-                    return object.svgId;
-                }).length);
+                console.log('Objects: ', objects);
+                resolve(res);
+            })
+            .catch(function (e) {
+                reject(e);
+            })
+    })
+}
+
+function fetchAreas(token) {
+    return new Promise(function(resolve, reject) {
+        axios.get(dataApiUrl + '/objects/Areas', {
+            headers: {
+                "X-Appercode-Session-Token": token,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        })
+            .then(function (res) {
+                areas = res.data;
+                console.log('Areas: ', areas);
                 resolve(res);
             })
             .catch(function (e) {
@@ -150,8 +178,8 @@ function switchMap(i) {
 
 function parseSVG() {
     maps.forEach((map, mapIndex) => {
-        objects.forEach(object => {
-            const objectElement = map.svg.querySelector('[id^="' + object.svgId + '"]');
+        function parseElement(el, type) {
+            const objectElement = map.svg.getElementById(el.svgId);
 
             if (objectElement) {
                 switch (objectElement.nodeName) {
@@ -164,7 +192,7 @@ function parseSVG() {
                             d1[0] - parseInt(objectElement.attributes.height.value),
                             d1[1] + parseInt(objectElement.attributes.width.value)
                         ];
-                        addMapRectangle([d1, d2], object, map.map, mapIndex);
+                        addMapElement(type, [d1, d2], object, map.map, mapIndex);
                         break;
                     case 'polygon':
                         let points = objectElement.attributes.points.value.split(' ');
@@ -181,47 +209,60 @@ function parseSVG() {
                             points[i][0] = map.svgMapHeight -  points[i][0];
                         });
 
-                        addMapPolygon(points, object, map.map, mapIndex);
+                        addMapElement(type, points, el, map.map, mapIndex);
 
                         break;
                 }
             }
+        }
+
+        objects.forEach(object => {
+            parseElement(object, 'object');
         });
+
+        areas.forEach(area => {
+            parseElement(area, 'area');
+        })
     });
 }
 
-function addMapRectangle(bounds, data, map, mapIndex) {
-    const rectangle = L.rectangle(bounds, {color: "orange", weight: 1});
-    rectangle.addTo(map);
-    rectangle.on('click', function () {
-        mapObjectClick(rectangle, data, map, mapIndex);
+function addMapElement(type, bounds, data, map, mapIndex) {
+    const polygon = L.polygon(bounds, {
+        color: type === 'object' ? 'red' : 'orange',
+        weight: 1
     });
-
-    data.mapObject = rectangle;
-    data.mapObject.mapIndex = mapIndex;
-}
-
-function addMapPolygon(points, data, map, mapIndex) {
-    const polygon = L.polygon(points, {color: "orange", weight: 1});
     polygon.addTo(map);
-    polygon.on('click', function() {
-        mapObjectClick(polygon, data, map, mapIndex);
-    });
 
     data.mapObject = polygon;
     data.mapObject.mapIndex = mapIndex;
+    data.type = type;
+
+    polygon.on('click', () => {
+        mapElementClick(polygon, data);
+    });
 }
 
-function mapObjectClick(obj, data, map, mapIndex) {
-    removeMapMarkers(mapIndex);
-    const marker = L.marker(obj.getCenter()).addTo(map);
+function mapElementClick(el, data) {
+    const map = maps[el.mapIndex].map;
+    const marker = L.marker(el.getCenter()).addTo(map);
 
-    map.flyToBounds(obj.getBounds());
+    removeMapMarkers(el.mapIndex);
 
-    infoPanel.innerHTML = data.title + ' — <a href="#' + data.id + '">Подробнее</a>';
+    map.flyToBounds(el.getBounds());
+
+    const scheme = data.type === 'object' ? 'Partners' : 'HtmlPages';
+    const actor = data.type === 'object' ? 'GeneralCatalogPageActor' : 'AreasPageActor';
+    const params = {
+        objectId: data.id,
+        schemaId: scheme
+    };
+    let url = 'actor:'  + actor + '?params=' + encodeURIComponent(JSON.stringify(params));
+    let link = `<a href="${url}">Подробнее</a>`;
+
+    infoPanel.innerHTML = `${data.title} ${link}`;
     infoPanel.classList.add('active');
 
-    maps[mapIndex].mapMarkers.push(marker);
+    maps[el.mapIndex].mapMarkers.push(marker);
 }
 
 function removeMapMarkers(mapIndex) {
@@ -232,15 +273,29 @@ function removeMapMarkers(mapIndex) {
     }
 }
 
-function messageFromNative(id) {
-    id = parseInt(id);
+function messageFromNative(svgId) {
+    let object = objects.find(obj => {
+        return obj.svgId === svgId;
+    });
 
-    if (objects[id] && objects[id].mapObject) {
-        switchMap(objects[id].mapObject.mapIndex);
+    let area = areas.find(ar => {
+        return ar.svgId === svgId;
+    });
 
-        objects[id].mapObject.fire('click');
+    if (object && object.mapObject) {
+        switchMap(object.mapObject.mapIndex);
+
+        object.mapObject.fire('click');
     } else {
-        console.log('Object not found!')
+        console.log(`Object ${svgId} not found!`);
+    }
+
+    if (area && area.mapObject) {
+        switchMap(area.mapObject.mapIndex);
+
+        area.mapObject.fire('click');
+    } else {
+        console.log(`Area ${svgId} not found!`);
     }
 }
 
@@ -248,7 +303,10 @@ function init() {
     apiLogin()
         .then(res => {
             if (res.data && res.data.sessionId) {
-                return fetchObjects(res.data.sessionId);
+                return Promise.all([
+                    fetchObjects(res.data.sessionId),
+                    fetchAreas(res.data.sessionId)
+                ]);
             }
         })
         .then(() => {
@@ -270,10 +328,12 @@ function init() {
             if (urlParams.get('id')) {
                 messageFromNative( urlParams.get('id') );
             }
-        })
+            stopSpin();
+        });
 }
 
 window.messageFromNative = messageFromNative;
 window.maps = maps;
 
+startSpin();
 init();
