@@ -55,6 +55,9 @@ function fetchObjects(token) {
                 "X-Appercode-Session-Token": token,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
+            },
+            params: {
+                take: -1
             }
         })
             .then(function (res) {
@@ -75,6 +78,9 @@ function fetchAreas(token) {
                 "X-Appercode-Session-Token": token,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
+            },
+            params: {
+                take: -1
             }
         })
             .then(function (res) {
