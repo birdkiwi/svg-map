@@ -132,7 +132,8 @@ function initMaps() {
 
         map.map = L.map('map-' + i, {
             crs: L.CRS.Simple,
-            minZoom: -4,
+            minZoom: -2,
+            zoom: 1,
             attributionControl: false
         });
 
@@ -163,6 +164,12 @@ function initMaps() {
 }
 
 function switchMap(i) {
+    infoPanel.classList.remove('active');
+
+    maps.forEach((map, i) => {
+        removeMapMarkers(i);
+    });
+
     mapBlock.querySelectorAll('.map').forEach(el => {
         el.classList.remove('active');
     });
@@ -250,14 +257,14 @@ function mapElementClick(el, data) {
 
     map.flyToBounds(el.getBounds());
 
-    const scheme = data.type === 'object' ? 'Partners' : 'HtmlPages';
+    const scheme = data.type === 'object' ? 'Exhibitors' : 'Areas';
     const actor = data.type === 'object' ? 'GeneralCatalogPageActor' : 'AreasPageActor';
     const params = {
         objectId: data.id,
         schemaId: scheme
     };
     let url = 'actor:'  + actor + '?params=' + encodeURIComponent(JSON.stringify(params));
-    let link = `<a href="${url}">Подробнее</a>`;
+    let link = `<a class="info-panel-link" href="${url}">Подробнее</a>`;
 
     infoPanel.innerHTML = `${data.title} ${link}`;
     infoPanel.classList.add('active');

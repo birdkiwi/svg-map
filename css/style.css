@@ -97,16 +97,26 @@ body {
     transition: all 200ms;
 }
 
-.info-panel a {
+.info-panel-link {
     display: block;
     position: absolute;
     color: #fff;
-    right: 0;
+    left: 0;
     top: 0;
     height: 100%;
-    width: 50px;
-    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    width: 100%;
     font-size: 0;
+}
+
+.info-panel-link::after {
+    content: '';
+    display: block;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 50px;
+    height: 100%;
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
     background: url('../images/icon-info.svg') no-repeat center;
     background-size: 50%;
 }
