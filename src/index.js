@@ -25,7 +25,8 @@ const appBlock = document.getElementById('app'),
     spinner = new Spinner().spin(),
     spinnerOverlay = document.getElementById('spinner-overlay');
 
-let maps = [],
+let messageFromNativeValue,
+    maps = [],
     objects = [],
     areas = [];
 
@@ -286,7 +287,12 @@ function removeMapMarkers(mapIndex) {
     }
 }
 
-function messageFromNative(svgId) {
+function messageFromNative(msg) {
+    console.log('Message from native: ' + msg);
+    messageFromNativeValue = msg;
+}
+
+function openElement(svgId) {
     let object = objects.find(obj => {
         return obj.svgId === svgId;
     });
@@ -316,6 +322,7 @@ function init() {
     apiLogin()
         .then(res => {
             if (res.data && res.data.sessionId) {
+                console.log('API login success...');
                 return Promise.all([
                     fetchObjects(res.data.sessionId),
                     fetchAreas(res.data.sessionId)
@@ -323,24 +330,29 @@ function init() {
             }
         })
         .then(() => {
+            console.log('Elements fetched...');
             return fetchSVGs();
         })
         .then(() => {
+            console.log('SVGs fetched...');
             initMaps();
         })
         .then(() => {
+            console.log('Maps initiated...');
             parseSVG()
         })
         .then(() => {
+            console.log('SVGs parsed...');
             const urlParams = new URLSearchParams(window.location.search);
 
             if (urlParams.get('map')) {
                 switchMap( parseInt( urlParams.get('map') ) );
             }
 
-            if (urlParams.get('id')) {
-                messageFromNative( urlParams.get('id') );
+            if (urlParams.get('id') || messageFromNativeValue) {
+                openElement( urlParams.get('id') || messageFromNativeValue );
             }
+
             stopSpin();
         });
 }
