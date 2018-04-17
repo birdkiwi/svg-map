@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {Spinner} from 'spin.js';
 import L from 'leaflet';
+import i18n from './i18n';
 import URLSearchParams from 'url-search-params';
 
 // Leaflet icon fix for webpack
@@ -17,6 +18,7 @@ L.Icon.Default.mergeOptions({
 import styles from "../css/style.css";
 
 const appBlock = document.getElementById('app'),
+    appErrorBlock = document.getElementById('app-error'),
     mapBlock = document.getElementById('maps'),
     mapBlockData = JSON.parse(appBlock.dataset.svgs),
     infoPanel = document.getElementById('info-panel'),
@@ -30,6 +32,8 @@ let messageFromNativeValue,
     objects = [],
     areas = [];
 
+window.session = {};
+
 function startSpin() {
     spinnerOverlay.innerHTML = '';
     spinnerOverlay.appendChild(spinner.el);
@@ -39,6 +43,15 @@ function startSpin() {
 function stopSpin() {
     spinnerOverlay.classList.remove('active');
 }
+
+function appError(msg) {
+    appErrorBlock.innerHTML = msg;
+    appErrorBlock.classList.add('active');
+}
+
+appErrorBlock.onclick = function () {
+    window.location.reload();
+};
 
 function apiLogin() {
     return axios.post(dataApiUrl + '/login/anonymous', {
@@ -67,6 +80,7 @@ function fetchObjects(token) {
                 resolve(res);
             })
             .catch(function (e) {
+                appError(i18n.t('errors:errorFetchingObjects'));
                 reject(e);
             })
     })
@@ -90,6 +104,7 @@ function fetchAreas(token) {
                 resolve(res);
             })
             .catch(function (e) {
+                appError(i18n.t('errors:errorFetchingAreas'));
                 reject(e);
             })
     })
@@ -106,7 +121,7 @@ function fetchSVGs() {
                         const svgData = res.data.documentElement;
                         maps[i] = {
                             url: mapData.url,
-                            title: mapData.title_en,
+                            title: mapData['title_' + i18n.language],
                             map: {},
                             mapMarkers: [],
                             svg: res.data.documentElement,
@@ -116,6 +131,7 @@ function fetchSVGs() {
                     }
                 })
                 .catch(function (e) {
+                    appError(i18n.t('errors:errorFetchingSVG'));
                     reject(e)
                 });
 
@@ -125,7 +141,7 @@ function fetchSVGs() {
         Promise.all(promises).then(value => {
             resolve()
         }, error => {
-            reject(new Error('Error in SVG file?'))
+            reject(new Error('Error in SVG file?'));
         });
     });
 }
@@ -271,7 +287,7 @@ function mapElementClick(el, data) {
         schemaId: scheme
     };
     let url = 'actor:'  + actor + '?params=' + encodeURIComponent(JSON.stringify(params));
-    let link = `<a class="info-panel-link" href="${url}">Подробнее</a>`;
+    let link = `<a class="info-panel-link" href="${url}">` + i18n.t('ui:details') + `</a>`;
 
     infoPanel.innerHTML = `${data.title} ${link}`;
     infoPanel.classList.add('active');
@@ -318,6 +334,14 @@ function openElement(svgId) {
     }
 }
 
+function sessionFromNative(session) {
+    window.session = JSON.parse(session);
+
+    if (window.session.language) {
+        i18n.changeLanguage(window.session.language);
+    }
+}
+
 function init() {
     apiLogin()
         .then(res => {
@@ -354,10 +378,15 @@ function init() {
             }
 
             stopSpin();
+        })
+        .catch(e => {
+            stopSpin();
+            console.log(e);
         });
 }
 
 window.messageFromNative = messageFromNative;
+window.sessionFromNative = sessionFromNative;
 window.maps = maps;
 
 startSpin();
